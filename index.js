@@ -151,7 +151,7 @@ const gitlet = {
         // Repository was not in the merge state, so just report that
         // the commit is complete.
         } else {
-          return "[" + headDesc + " " + commitHash + "] " + m;
+          return `[ ${headDesc}  ${commitHash} ]  ${m}`;
         }
       }
     }
@@ -159,15 +159,13 @@ const gitlet = {
 
   // **branch()** creates a new branch that points at the commit that
   // `HEAD` points at.
-  branch: function(name, opts) {
+  branch: function(name, opts = {}) {
     files.assertInRepo();
-    opts = opts || {};
 
     // If no branch `name` was passed, list the local branches.
     if (name === undefined) {
-      return Object.keys(refs.localHeads()).map(function(branch) {
-        return (branch === refs.headBranchName() ? "* " : "  ") + branch;
-      }).join("\n") + "\n";
+      return Object.keys(refs.localHeads()).map(branch => (branch === refs.headBranchName() ? "* " : "  ") + branch)
+        .join("\n") + "\n";
 
     // `HEAD` is not pointing at a commit, so there is no commit for
     // the new branch to point at.  Abort.  This is most likely to
@@ -177,7 +175,7 @@ const gitlet = {
 
     // Abort because a branch called `name` already exists.
     } else if (refs.exists(refs.toLocalRef(name))) {
-      throw new Error("A branch named " + name + " already exists");
+      throw new Error(`A branch named ${name} already exists`);
 
     // Otherwise, create a new branch by creating a new file called
     // `name` that contains the hash of the commit that `HEAD` points
