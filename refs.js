@@ -8,140 +8,143 @@
 // the repository, like `HEAD`, `MERGE_HEAD` and `FETCH_HEAD`.  Ref
 // files contain either a hash or another ref.
 
-let refs = {
+const fs = require('fs');
+const nodePath = require('path');
+const Files = require('./files');
+const Config = require('./config');
+const Util = require('./util');
+const Objects = require('./objects');
 
-    // **isRef()** returns true if `ref` matches valid qualified ref
-    // syntax.
-    isRef: function(ref) {
-      return ref !== undefined &&
-        (ref.match("^refs/heads/[A-Za-z-]+$") ||
-         ref.match("^refs/remotes/[A-Za-z-]+/[A-Za-z-]+$") ||
-         ["HEAD", "FETCH_HEAD", "MERGE_HEAD"].indexOf(ref) !== -1);
-    },
+const Refs = {
 
-    // **terminalRef()** resolves `ref` to the most specific ref
-    // possible.
-    terminalRef: function(ref) {
+  // **isRef()** returns true if `ref` matches valid qualified ref
+  // syntax.
+  isRef(ref) {
+    return ref !== undefined
+        && (ref.match('^refs/heads/[A-Za-z-]+$')
+         || ref.match('^refs/remotes/[A-Za-z-]+/[A-Za-z-]+$')
+         || ['HEAD', 'FETCH_HEAD', 'MERGE_HEAD'].indexOf(ref) !== -1);
+  },
 
-      // If `ref` is "HEAD" and head is pointing at a branch, return the
-      // branch.
-      if (ref === "HEAD" && !refs.isHeadDetached()) {
-        return files.read(files.gitletPath("HEAD")).match("ref: (refs/heads/.+)")[1];
+  // **terminalRef()** resolves `ref` to the most specific ref
+  // possible.
+  terminalRef(ref) {
+    // If `ref` is "HEAD" and head is pointing at a branch, return the
+    // branch.
+    if (ref === 'HEAD' && !Refs.isHeadDetached()) {
+      return Files.read(Files.gitletPath('HEAD')).match('ref: (refs/heads/.+)')[1];
 
       // If ref is qualified, return it.
-      } else if (refs.isRef(ref)) {
-        return ref;
+    } if (Refs.isRef(ref)) {
+      return ref;
 
       // Otherwise, assume ref is an unqualified local ref (like
       // `master`) and turn it into a qualified ref (like
       // `refs/heads/master`)
-      } else {
-        return refs.toLocalRef(ref);
-      }
-    },
+    }
+    return Refs.toLocalRef(ref);
+  },
 
-    // **hash()** returns the hash that `refOrHash` points to.
-    hash: function(refOrHash) {
-      if (objects.exists(refOrHash)) {
-        return refOrHash;
-      } else {
-        let terminalRef = refs.terminalRef(refOrHash);
-        if (terminalRef === "FETCH_HEAD") {
-          return refs.fetchHeadBranchToMerge(refs.headBranchName());
-        } else if (refs.exists(terminalRef)) {
-          return files.read(files.gitletPath(terminalRef));
-        }
-      }
-    },
+  // **hash()** returns the hash that `refOrHash` points to.
+  hash(refOrHash) {
+    if (Objects.exists(refOrHash)) {
+      return refOrHash;
+    }
+    const terminalRef = Refs.terminalRef(refOrHash);
+    if (terminalRef === 'FETCH_HEAD') {
+      return Refs.fetchHeadBranchToMerge(Refs.headBranchName());
+    } if (Refs.exists(terminalRef)) {
+      return Files.read(Files.gitletPath(terminalRef));
+    }
+  },
 
-    // **isHeadDetached()** returns true if `HEAD` contains a commit
-    // hash, rather than the ref of a branch.
-    isHeadDetached: function() {
-      return files.read(files.gitletPath("HEAD")).match("refs") === null;
-    },
+  // **isHeadDetached()** returns true if `HEAD` contains a commit
+  // hash, rather than the ref of a branch.
+  isHeadDetached() {
+    return Files.read(Files.gitletPath('HEAD')).match('refs') === null;
+  },
 
-    // **isCheckedOut()** returns true if the repository is not bare and
-    // `HEAD` is pointing at the branch called `branch`
-    isCheckedOut: function(branch) {
-      return !config.isBare() && refs.headBranchName() === branch;
-    },
+  // **isCheckedOut()** returns true if the repository is not bare and
+  // `HEAD` is pointing at the branch called `branch`
+  isCheckedOut(branch) {
+    return !Config.isBare() && Refs.headBranchName() === branch;
+  },
 
-    // **toLocalRef()** converts the branch name `name` into a qualified
-    // local branch ref.
-    toLocalRef: function(name) {
-      return "refs/heads/" + name;
-    },
+  // **toLocalRef()** converts the branch name `name` into a qualified
+  // local branch ref.
+  toLocalRef(name) {
+    return `refs/heads/${name}`;
+  },
 
-    // **toRemoteRef()** converts `remote` and branch name `name` into a
-    // qualified remote branch ref.
-    toRemoteRef: function(remote, name) {
-      return "refs/remotes/" + remote + "/" + name;
-    },
+  // **toRemoteRef()** converts `remote` and branch name `name` into a
+  // qualified remote branch ref.
+  toRemoteRef(remote, name) {
+    return `refs/remotes/${remote}/${name}`;
+  },
 
-    // **write()** sets the content of the file for the qualified ref
-    // `ref` to `content`.
-    write: function(ref, content) {
-      if (refs.isRef(ref)) {
-        files.write(files.gitletPath(nodePath.normalize(ref)), content);
-      }
-    },
+  // **write()** sets the content of the file for the qualified ref
+  // `ref` to `content`.
+  write(ref, content) {
+    if (Refs.isRef(ref)) {
+      Files.write(Files.gitletPath(nodePath.normalize(ref)), content);
+    }
+  },
 
-    // **rm()** removes the file for the qualified ref `ref`.
-    rm: function(ref) {
-      if (refs.isRef(ref)) {
-        fs.unlinkSync(files.gitletPath(ref));
-      }
-    },
+  // **rm()** removes the file for the qualified ref `ref`.
+  rm(ref) {
+    if (Refs.isRef(ref)) {
+      fs.unlinkSync(Files.gitletPath(ref));
+    }
+  },
 
-    // **fetchHeadBranchToMerge()** reads the `FETCH_HEAD` file and gets
-    // the hash that the remote `branchName` is pointing at.  For more
-    // information about `FETCH_HEAD` see [gitlet.fetch()](#section-80).
-    fetchHeadBranchToMerge: function(branchName) {
-      return util.lines(files.read(files.gitletPath("FETCH_HEAD")))
-        .filter(function(l) { return l.match("^.+ branch " + branchName + " of"); })
-        .map(function(l) { return l.match("^([^ ]+) ")[1]; })[0];
-    },
+  // **fetchHeadBranchToMerge()** reads the `FETCH_HEAD` file and gets
+  // the hash that the remote `branchName` is pointing at.  For more
+  // information about `FETCH_HEAD` see [gitlet.fetch()](#section-80).
+  fetchHeadBranchToMerge(branchName) {
+    return Util.lines(Files.read(Files.gitletPath('FETCH_HEAD')))
+      .filter(l => l.match(`^.+ branch ${branchName} of`))
+      .map(l => l.match('^([^ ]+) ')[1])[0];
+  },
 
-    // **localHeads()** returns a JS object that maps local branch names
-    // to the hash of the commit they point to.
-    localHeads: function() {
-      return fs.readdirSync(nodePath.join(files.gitletPath(), "refs", "heads"))
-        .reduce(function(o, n) { return util.setIn(o, [n, refs.hash(n)]); }, {});
-    },
+  // **localHeads()** returns a JS object that maps local branch names
+  // to the hash of the commit they point to.
+  localHeads() {
+    return fs.readdirSync(nodePath.join(Files.gitletPath(), 'refs', 'heads'))
+      .reduce((o, n) => Util.setIn(o, [n, Refs.hash(n)]), {});
+  },
 
-    // **exists()** returns true if the qualified ref `ref` exists.
-    exists: function(ref) {
-      return refs.isRef(ref) && fs.existsSync(files.gitletPath(ref));
-    },
+  // **exists()** returns true if the qualified ref `ref` exists.
+  exists(ref) {
+    return Refs.isRef(ref) && fs.existsSync(Files.gitletPath(ref));
+  },
 
-    // **headBranchName()** returns the name of the branch that `HEAD`
-    // is pointing at.
-    headBranchName: function() {
-      if (!refs.isHeadDetached()) {
-        return files.read(files.gitletPath("HEAD")).match("refs/heads/(.+)")[1];
-      }
-    },
+  // **headBranchName()** returns the name of the branch that `HEAD`
+  // is pointing at.
+  headBranchName() {
+    if (!Refs.isHeadDetached()) {
+      return Files.read(Files.gitletPath('HEAD')).match('refs/heads/(.+)')[1];
+    }
+  },
 
-    // **commitParentHashes()** returns the array of commits that would
-    // be the parents of the next commit.
-    commitParentHashes: function() {
-      let headHash = refs.hash("HEAD");
+  // **commitParentHashes()** returns the array of commits that would
+  // be the parents of the next commit.
+  commitParentHashes() {
+    const headHash = Refs.hash('HEAD');
 
-      // If the repository is in the middle of a merge, return the
-      // hashes of the two commits being merged.
-      if (merge.isMergeInProgress()) {
-        return [headHash, refs.hash("MERGE_HEAD")];
+    // If the repository is in the middle of a merge, return the
+    // hashes of the two commits being merged.
+    if (Refs.hash('MERGE_HEAD')) {
+      return [headHash, Refs.hash('MERGE_HEAD')];
 
       // If this repository has no commits, return an empty array.
-      } else if (headHash === undefined) {
-        return [];
+    } if (headHash === undefined) {
+      return [];
 
       // Otherwise, return the hash of the commit that `HEAD` is
       // currently pointing at.
-      } else {
-        return [headHash];
-      }
     }
-  };
+    return [headHash];
+  },
+};
 
-  module.exports = refs;
+module.exports = Refs;
