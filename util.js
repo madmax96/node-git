@@ -4,14 +4,18 @@
 
 // A set of handy functions.
 const crypto = require('crypto');
+
 const Util = {
 
-  // **isString()** returns true if `thing` is a string.
-  isString(thing) {
-    return typeof thing === 'string';
+  // **isString()** returns true if `value` is a string.
+  isString(value) {
+    return typeof value === 'string';
   },
 
-  // **hash()** returns a hash of `string`.
+  /**
+   * @param {string} string
+   * @returns {string} returns a hash of `string`.
+   */
   hash(string) {
     return crypto.createHash('md5').update(string).digest('hex');
   },
@@ -31,8 +35,11 @@ const Util = {
     return obj;
   },
 
-  // **lines()** takes a string, splits on newlines and returns an
-  // array of the lines that are not empty.
+  /**
+   * @param {string} string
+   * @returns {string[]} takes a string, splits on newlines and returns an
+     array of the lines that are not empty.
+   */
   lines(str) {
     return str.split('\n').filter(l => l !== '');
   },
@@ -47,8 +54,14 @@ const Util = {
     return arr.reduce((a, p) => (a.indexOf(p) === -1 ? a.concat(p) : a), []);
   },
 
-  // **intersection()** takes two arrays `a` and `b`.  It returns an
-  // array of the items that appear in both.
+
+  /**
+   * takes two arrays `a` and `b`.It returns an
+     array of the items that appear in both.
+   * @param {array} a
+   * @param {array} b
+   * @returns {array}
+   */
   intersection(a, b) {
     return a.filter(e => b.indexOf(e) !== -1);
   },

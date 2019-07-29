@@ -1,4 +1,4 @@
 node_modules/
-.Gitlet
+.gitlet
 .vscode
-test
+test/

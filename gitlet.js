@@ -5,7 +5,6 @@ const Config = require('./config');
 const Diff = require('./diff');
 const Refs = require('./refs');
 const Objects = require('./objects');
-const Status = require('./status');
 const Util = require('./util');
 const Merge = require('./merge');
 const WorkingCopy = require('./workingCopy');
@@ -41,7 +40,7 @@ const Gitlet = {
     // put the directories inside the `.Gitlet` directory.  If the
     // repository is bare, put them in the top level of the
     // repository.
-    Files.writeFilesFromTree(opts.bare ? GitletStructure : { '.Gitlet': GitletStructure },
+    Files.writeFilesFromTree(opts.bare ? GitletStructure : { '.gitlet': GitletStructure },
       process.cwd());
   },
 
@@ -131,7 +130,7 @@ const Gitlet = {
         // If the repository is in the merge state, use a pre-written
         // merge commit message.  If the repository is not in the
         // merge state, use the message passed with `-m`.
-        const m = Merge.isMergeInProgress() ? Files.read(Files.GitletPath('MERGE_MSG')) : opts.m;
+        const m = Merge.isMergeInProgress() ? Files.read(Files.gitletPath('MERGE_MSG')) : opts.m;
 
         // Write the new commit to the `objects` directory.
         const commitHash = Objects.writeCommit(treeHash, m, Refs.commitParentHashes());
@@ -143,7 +142,7 @@ const Gitlet = {
         // state. Remove `MERGE_HEAD` and `MERGE_MSG`to exit the merge
         // state.  Report that the merge is complete.
         if (Merge.isMergeInProgress()) {
-          fs.unlinkSync(Files.GitletPath('MERGE_MSG'));
+          fs.unlinkSync(Files.gitletPath('MERGE_MSG'));
           Refs.rm('MERGE_HEAD');
           return 'Merge made by the three-way strategy';
 
@@ -159,16 +158,16 @@ const Gitlet = {
   // `HEAD` points at.
   branch(name, opts = {}) {
     Files.assertInRepo();
-
     // If no branch `name` was passed, list the local branches.
-    if (name === undefined) {
+    if (!name) {
       return `${Object.keys(Refs.localHeads()).map(branch => (branch === Refs.headBranchName() ? '* ' : '  ') + branch)
         .join('\n')}\n`;
 
     // `HEAD` is not pointing at a commit, so there is no commit for
     // the new branch to point at.  Abort.  This is most likely to
     // happen if the repository has no commits.
-    } if (Refs.hash('HEAD') === undefined) {
+    }
+    if (Refs.hash('HEAD') === undefined) {
       throw new Error(`${Refs.headBranchName()} not a valid object name`);
 
     // Abort because a branch called `name` already exists.
@@ -186,7 +185,7 @@ const Gitlet = {
   // **checkout()** changes the index, working copy and `HEAD` to
   // reflect the content of `ref`.  `ref` might be a branch name or a
   // commit hash.
-  checkout(ref, _) {
+  checkout(ref) {
     Files.assertInRepo();
     Config.assertNotBare();
 
@@ -196,55 +195,55 @@ const Gitlet = {
     // Abort if `ref` cannot be found.
     if (!Objects.exists(toHash)) {
       throw new Error(`${ref} did not match any file(s) known to Gitlet`);
+    }
 
     // Abort if the hash to check out points to an object that is a
     // not a commit.
-    } else if (Objects.type(Objects.read(toHash)) !== 'commit') {
+    if (Objects.type(Objects.read(toHash)) !== 'commit') {
       throw new Error(`reference is not a tree: ${ref}`);
+    }
 
     // Abort if `ref` is the name of the branch currently checked out.
     // Abort if head is detached, `ref` is a commit hash and `HEAD` is
     // pointing at that hash.
-    } else if (ref === Refs.headBranchName()
-               || ref === Files.read(Files.GitletPath('HEAD'))) {
+    if (ref === Refs.headBranchName() || ref === Files.read(Files.gitletPath('HEAD'))) {
       return `Already on ${ref}`;
-    } else {
-      // Get a list of files changed in the working copy.  Get a list
-      // of the files that are different in the head commit and the
-      // commit to check out.  If any files appear in both lists then
-      // abort.
-      const paths = Diff.changedFilesCommitWouldOverwrite(toHash);
-      if (paths.length > 0) {
-        throw new Error(`local changes would be lost\n${paths.join('\n')}\n`);
-
-      // Otherwise, perform the checkout.
-      } else {
-        process.chdir(Files.workingCopyPath());
-
-        // If the ref is in the `objects` directory, it must be a hash
-        // and so this checkout is detaching the head.
-        const isDetachingHead = Objects.exists(ref);
-
-        // Get the list of differences between the current commit and
-        // the commit to check out.  Write them to the working copy.
-        WorkingCopy.write(Diff.diff(Refs.hash('HEAD'), toHash));
-
-        // Write the commit being checked out to `HEAD`. If the head
-        // is being detached, the commit hash is written directly to
-        // the `HEAD` file.  If the head is not being detached, the
-        // branch being checked out is written to `HEAD`.
-        Refs.write('HEAD', isDetachingHead ? toHash : `ref: ${Refs.toLocalRef(ref)}`);
-
-        // Set the index to the contents of the commit being checked
-        // out.
-        Index.write(Index.tocToIndex(Objects.commitToc(toHash)));
-
-        // Report the result of the checkout.
-        return isDetachingHead
-          ? `Note: checking out ${toHash}\nYou are in detached HEAD state.`
-          : `Switched to branch ${ref}`;
-      }
     }
+
+    // Get a list of files changed in the working copy.  Get a list
+    // of the files that are different in the head commit and the
+    // commit to check out.  If any files appear in both lists then
+    // abort.
+    const paths = Diff.changedFilesCommitWouldOverwrite(toHash);
+    if (paths.length > 0) {
+      throw new Error(`local changes would be lost\n${paths.join('\n')}\n`);
+    }
+
+    // Otherwise, perform the checkout.
+    process.chdir(Files.workingCopyPath());
+
+    // If the ref is in the `objects` directory, it must be a hash
+    // and so this checkout is detaching the head.
+    const isDetachingHead = Objects.exists(ref);
+
+    // Get the list of differences between the current commit and
+    // the commit to check out.  Write them to the working copy.
+    WorkingCopy.write(Diff.diff(Refs.hash('HEAD'), toHash));
+
+    // Write the commit being checked out to `HEAD`. If the head
+    // is being detached, the commit hash is written directly to
+    // the `HEAD` file.  If the head is not being detached, the
+    // branch being checked out is written to `HEAD`.
+    Refs.write('HEAD', isDetachingHead ? toHash : `ref: ${Refs.toLocalRef(ref)}`);
+
+    // Set the index to the contents of the commit being checked
+    // out.
+    Index.write(Index.tocToIndex(Objects.commitToc(toHash)));
+
+    // Report the result of the checkout.
+    return isDetachingHead
+      ? `Note: checking out ${toHash}\nYou are in detached HEAD state.`
+      : `Switched to branch ${ref}`;
   },
 
   // **diff()** shows the changes required to go from the `ref1`
@@ -532,10 +531,47 @@ const Gitlet = {
   // **status()** reports the state of the repo: the current branch,
   // untracked files, conflicted files, files that are staged to be
   // committed and files that are not staged to be committed.
-  status(_) {
+  status() {
     Files.assertInRepo();
     Config.assertNotBare();
-    return Status.toString();
+    // **untracked()** returns an array of lines listing the files not
+    // being tracked by Gitlet.
+    function untracked() {
+      const index = Index.toc();
+      return fs.readdirSync(Files.workingCopyPath())
+        .filter(p => index[p] === undefined && p !== '.gitlet');
+    }
+
+    // **toBeCommitted()** returns an array of lines listing the files
+    // that have changes that will be included in the next commit.
+    function toBeCommitted() {
+      const headHash = Refs.hash('HEAD');
+      const headToc = headHash === undefined ? {} : Objects.commitToc(headHash);
+      const ns = Diff.nameStatus(Diff.tocDiff(headToc, Index.toc()));
+      return Object.keys(ns).map(p => `${ns[p]} ${p}`);
+    }
+
+    // **notStagedForCommit()** returns an array of lines listing the
+    // files that have changes that will not be included in the next
+    // commit.
+    function notStagedForCommit() {
+      const ns = Diff.nameStatus(Diff.diff());
+      return Object.keys(ns).map(p => `${ns[p]} ${p}`);
+    }
+
+    // **listing()** keeps `lines` (prefixed by `heading`) only if it's nonempty.
+    function listing(heading, lines) {
+      return lines.length > 0 ? [heading, lines] : [];
+    }
+
+    // Gather all the sections, keeping only nonempty ones, and flatten them
+    // together into a string.
+    return Util.flatten([`On branch ${Refs.headBranchName()}`,
+      listing('Untracked files:', untracked()),
+      listing('Unmerged paths:', Index.conflictedPaths()),
+      listing('Changes to be committed:', toBeCommitted()),
+      listing('Changes not staged for commit:', notStagedForCommit())])
+      .join('\n');
   },
 
   // **clone()** copies the repository at `remotePath` to
@@ -687,7 +723,7 @@ const Gitlet = {
 // **parseOptions()** takes the `process.argv` object passed when
 // Gitlet.js is run as a script. It returns an object that contains
 // the parsed parameters to be formed into a Gitlet command.
-const parseOptions = function (argv) {
+const parseOptions = (argv) => {
   let name;
   return argv.reduce((opts, arg) => {
     if (arg.match(/^-/)) {
@@ -708,7 +744,7 @@ const parseOptions = function (argv) {
 // is run as a script.  It parses the command line arguments, runs the
 // corresponding Gitlet command and returns the string returned by the
 // command.
-const runCli = module.exports.runCli = function (argv) {
+const runCli = (argv) => {
   const opts = parseOptions(argv);
   const commandName = opts._[2];
 
@@ -742,8 +778,9 @@ if (require.main === module) {
       console.log(result);
     }
   } catch (e) {
-    console.error(e.toString());
+    console.error(e);
   }
 }
 
 module.exports = Gitlet;
+module.exports.runCli = runCli;

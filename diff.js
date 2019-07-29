@@ -54,7 +54,7 @@ const Diff = {
   // **tocDiff()** takes three JS objects that map file paths to
   // hashes of file content.  It returns a diff between `receiver` and
   // `giver` (see the module description for the format).  `base` is
-  // the version that is the most recent commen ancestor of the
+  // the version that is the most recent common ancestor of the
   // `receiver` and `giver`.  If `base` is not passed, `receiver` is
   // used as the base.  The base is only passed when getting the diff
   // for a merge.  This is the only time the conflict status might be
