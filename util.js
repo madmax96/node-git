@@ -3,8 +3,8 @@
 // -----------
 
 // A set of handy functions.
-
-const util = {
+const crypto = require('crypto');
+const Util = {
 
   // **isString()** returns true if `thing` is a string.
   isString(thing) {
@@ -13,13 +13,7 @@ const util = {
 
   // **hash()** returns a hash of `string`.
   hash(string) {
-    let hashInt = 0;
-    for (let i = 0; i < string.length; i++) {
-      hashInt = hashInt * 31 + string.charCodeAt(i);
-      hashInt |= 0;
-    }
-
-    return Math.abs(hashInt).toString(16);
+    return crypto.createHash('md5').update(string).digest('hex');
   },
 
   // **setIn()** takes an array that contains 1 or more keys and has
@@ -31,7 +25,7 @@ const util = {
       obj[arr[0]] = arr[1];
     } else if (arr.length > 2) {
       obj[arr[0]] = obj[arr[0]] || {};
-      util.setIn(obj[arr[0]], arr.slice(1));
+      Util.setIn(obj[arr[0]], arr.slice(1));
     }
 
     return obj;
@@ -45,7 +39,7 @@ const util = {
 
   // **flatten()** returns a flattened version of `arr`.
   flatten(arr) {
-    return arr.reduce((a, e) => a.concat(e instanceof Array ? util.flatten(e) : e), []);
+    return arr.reduce((a, e) => a.concat(e instanceof Array ? Util.flatten(e) : e), []);
   },
 
   // **unique()** returns the unique elements in `arr`.
@@ -74,4 +68,4 @@ const util = {
     };
   },
 };
-module.exports = util;
+module.exports = Util;

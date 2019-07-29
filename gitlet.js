@@ -64,7 +64,7 @@ const Gitlet = {
     }
   },
 
-  // **rm()** removes files that match `path` from the Index.
+  // **rm()** removes files that match `path` from the Working dir and Index.
   rm(path, opts = {}) {
     Files.assertInRepo();
     Config.assertNotBare();

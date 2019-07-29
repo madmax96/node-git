@@ -15,9 +15,7 @@ const Merge = {
   // **commonAncestor()** returns the hash of the commit that is the
   // most recent common ancestor of `aHash` and `bHash`.
   commonAncestor(aHash, bHash) {
-    const sorted = [aHash, bHash].sort();
-    aHash = sorted[0];
-    bHash = sorted[1];
+    const [aHash, bHash] = [aHash, bHash].sort();
     const aAncestors = [aHash].concat(Objects.ancestors(aHash));
     const bAncestors = [bHash].concat(Objects.ancestors(bHash));
     return util.intersection(aAncestors, bAncestors)[0];

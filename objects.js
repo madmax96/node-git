@@ -20,7 +20,7 @@ const Util = require('./util');
 
 const Objects = {
 
-  // **writeTree()** stores a graph of tree objects that represent the
+  // **writeTree()** stores a tree of objects that represent the
   // content currently in the index.
   writeTree(tree) {
     const treeObject = `${Object.keys(tree).map((key) => {
