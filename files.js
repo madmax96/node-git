@@ -1,6 +1,7 @@
 // Files module
 // ------------
 const fs = require('fs');
+const Os = require('os');
 const nodePath = require('path');
 const Util = require('./util');
 
@@ -28,7 +29,7 @@ const Files = {
   // **write()** writes `content` to file at `path`, overwriting
   // anything that is already there.
   write(path, content) {
-    const prefix = require('os').platform() === 'win32' ? '.' : '/';
+    const prefix = Os.platform() === 'win32' ? '.' : '/';
     Files.writeFilesFromTree(Util.setIn({}, path.split(nodePath.sep).concat(content)), prefix);
   },
 
@@ -71,7 +72,7 @@ const Files = {
 
   // **gitletPath()** returns a string made by concatenating `path` to
   // the absolute path of the `.gitlet` directory of the repository.
-  gitletPath(path) {
+  gitletPath(path = '') {
     function gitletDir(dir) {
       if (fs.existsSync(dir)) {
         const potentialConfigFile = nodePath.join(dir, 'config');
@@ -80,9 +81,11 @@ const Files = {
               && fs.statSync(potentialConfigFile).isFile()
               && Files.read(potentialConfigFile).match(/\[core\]/)) {
           return dir;
-        } if (fs.existsSync(potentialGitletPath)) {
+        }
+        if (fs.existsSync(potentialGitletPath)) {
           return potentialGitletPath;
-        } if (dir !== '/') {
+        }
+        if (dir !== '/') {
           return gitletDir(nodePath.join(dir, '..'));
         }
       }
@@ -90,14 +93,14 @@ const Files = {
 
     const gDir = gitletDir(process.cwd());
     if (gDir !== undefined) {
-      return nodePath.join(gDir, path || '');
+      return nodePath.join(gDir, path);
     }
   },
 
   // **workingCopyPath()** returns a string made by concatenating `path` to
   // the absolute path of the root of the repository.
-  workingCopyPath(path) {
-    return nodePath.join(nodePath.join(Files.gitletPath(), '..'), path || '');
+  workingCopyPath(path = '') {
+    return nodePath.join(nodePath.join(Files.gitletPath(), '..'), path);
   },
 
   // **lsRecursive()** returns an array of all the files found in a
@@ -105,10 +108,14 @@ const Files = {
   lsRecursive(path) {
     if (!fs.existsSync(path)) {
       return [];
-    } if (fs.statSync(path).isFile()) {
+    }
+    if (fs.statSync(path).isFile()) {
       return [path];
-    } if (fs.statSync(path).isDirectory()) {
-      return fs.readdirSync(path).reduce((fileList, dirChild) => fileList.concat(Files.lsRecursive(nodePath.join(path, dirChild))), []);
+    }
+    if (fs.statSync(path).isDirectory()) {
+      return fs.readdirSync(path)
+        .reduce((fileList, dirChild) => fileList
+          .concat(Files.lsRecursive(nodePath.join(path, dirChild))), []);
     }
   },
 
@@ -118,7 +125,11 @@ const Files = {
   // `flattenNestedTree()`<br/>
   // eg `nestFlatTree({ "a/b": "me" }); // => { a: { b: "me" }}`
   nestFlatTree(obj) {
-    return Object.keys(obj).reduce((tree, wholePath) => Util.setIn(tree, wholePath.split(nodePath.sep).concat(obj[wholePath])), {});
+    return Object.keys(obj)
+      .reduce((tree, wholePath) => Util
+        .setIn(tree, wholePath
+          .split(nodePath.sep)
+          .concat(obj[wholePath])), {});
   },
 
   // **flattenNestedTree()** takes `tree`, a nested JS object where
